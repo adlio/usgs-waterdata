@@ -1,6 +1,7 @@
 module USGS
 
   require 'open-uri'
+  require 'date'
 
   class Gauge
 
@@ -12,7 +13,6 @@ module USGS
 
     # Determine the most recent instantaneous flow in CFS for this guage
     def latest_flow
-
       url = "http://waterdata.usgs.gov/nwis/uv?cb_00060=on&format=rdb&period=1&site_no=#{@site_number}"
       flow = 0
       open(url).each do |line|
@@ -26,12 +26,66 @@ module USGS
       flow
     end
 
-    # Obtain statistical data for a gauge from the USGS site and store it internally
-    def populate_statistical_data
+    # todo: use lambda (or a similar construct) to minimize repetitive code
 
-      #todo: populate the URL with gauge-specific data. 
-      #For this to work, we need to figure out how to obtain valid dates for a station
-      url = "http://waterdata.usgs.gov/id/nwis/dvstat/?site_no=13247500&por_13247500_2=1155369,00060,2,1906-10-01,2008-05-04&start_dt=1906-10-01&end_dt=2008-05-04&format=rdb&date_format=YYYY-MM-DD"
+    # Returns a 2-dimensional array of the statistical mean flows for this
+    # gauge on days for which data exists, sorted by date.
+    def get_statistical_mean_flows
+      populate_statistical_data if @statistical_mean_flows.nil? or @statistical_mean_flows.empty?
+      @statistical_mean_flows
+    end
+
+    # Returns a 2-dimensional array of the statistical median flows for this
+    # gauge on days for which data exists, sorted by date.
+    def get_statistical_median_flows
+      populate_statistical_data if @statistical_median_flows.nil? or @statistical_median_flows.empty?
+      @statistical_median_flows
+    end
+    
+    # Returns a 2-dimensional array of the statistical 80th percentile flows for this
+    # gauge on days for which data exists, sorted by date.
+    def get_statistical_percentile80_flows
+      populate_statistical_data if @statistical_percentile80_flows.nil? or @statistical_percentile80_flows.empty?
+      @statistical_percentile80_flows
+    end
+    
+    # Returns a 2-dimensional array of the statistical 20th percentile flows for this
+    # gauge on days for which data exists, sorted by date.
+    def get_statistical_percentile20_flows
+      populate_statistical_data if @statistical_percentile20_flows.nil? or @statistical_percentile20_flows.empty?
+      @statistical_percentile20_flows
+    end
+
+    # Returns a 2-dimensional array of the daily mean flows for this
+    # gauge on days for which data exists, sorted by date.
+    def get_daily_mean_flows
+      populate_daily_data if @daily_mean_flows.nil? or @daily_mean_flows.empty?
+      @daily_mean_flows
+    end
+
+    private
+
+    # Populate daily data for a gauge from the USGS site
+    def populate_daily_data
+      url = "http://waterdata.usgs.gov/nwis/dv?site_no=#{@site_number}&cb_00060=on&begin_date=1880-01-01&format=rdb"
+      mean_flows_hash = {}  
+      open(url).each do |line|
+        next if line =~ /^#/
+        next if line =~ /^5/
+        next if line =~ /^agency/
+         
+        field_array = line.split(/\t/)
+        date_array = field_array[2].split('-')
+        date = Date.new(date_array[0].to_i, date_array[1].to_i, date_array[2].to_i)
+        mean = field_array[3]
+        mean_flows_hash[date] = mean
+      end
+      @daily_mean_flows = mean_flows_hash.sort
+    end
+
+    # Populate statistical data for a gauge from the USGS site
+    def populate_statistical_data
+      url = "http://waterdata.usgs.gov/id/nwis/dvstat/?site_no=#{@site_number}&por_#{@site_number}_2=1155369,00060,2,0000-01-01,9999-01-01&start_dt=0000-01-01&end_dt=9999-01-01&format=rdb&date_format=YYYY-MM-DD"
 
       field_map = { 
         'agency' => 0, 
@@ -59,10 +113,10 @@ module USGS
         'p95_va' => 22       # 95 percentile of daily mean values for this day.
       }
       
-      mean_flow_hash = {}
-      median_flow_hash = {}
-      percentile20_flow_hash = {}
-      percentile80_flow_hash = {}
+      mean_flows_hash = {}
+      median_flows_hash = {}
+      percentile20_flows_hash = {}
+      percentile80_flows_hash = {}
       open(url).each do |line|
         next if line =~ /^#/
         next if line =~ /^5/
@@ -77,66 +131,18 @@ module USGS
         percentile20 = field_array[field_map['p20_va']]
         percentile80 = field_array[field_map['p80_va']]
 
-        tm = Time.mktime(2000, month, day)
-        mean_flow_hash[tm] = mean
-        median_flow_hash[tm] = median
-        percentile20_flow_hash[tm] = percentile20
-        percentile80_flow_hash[tm] = percentile80
+        d = Date.new(1500, month.to_i, day.to_i)
+        mean_flows_hash[d] = mean
+        median_flows_hash[d] = median
+        percentile20_flows_hash[d] = percentile20
+        percentile80_flows_hash[d] = percentile80
       end
 
-      @mean_flow = mean_flow_hash.sort
-      @median_flow = median_flow_hash.sort
-      @percentile20_flow = percentile20_flow_hash.sort
-      @percentile80_flow = percentile80_flow_hash.sort
-
-
+      @statistical_mean_flows = mean_flows_hash.sort
+      @statistical_median_flows = median_flows_hash.sort
+      @statistical_percentile20_flows = percentile20_flows_hash.sort
+      @statistical_percentile80_flows = percentile80_flows_hash.sort
     end
-
-    # todo: use lambda (or a similar construct) to minimize repetitive code
-
-    # Obtain the mean flow for this guage on a particular day and month. If 
-    # the parameter is nil, return a 2-dimensional array of the mean flows
-    # on days for which data exists.  The array is sorted by date.
-    def get_mean_flow(day_and_month = nil)
-      populate_statistical_data if @mean_flow.nil? or @mean_flow.empty?
-
-      #todo: handle a specific day and month
-      @mean_flow
-    end
-
-    
-    # Obtain the median flow for this guage on a particular day and month. If 
-    # the parameter is nil, return a 2-dimensional array of the median flows
-    # on days for which data exists. The array is sorted by date.
-    def get_median_flow(day_and_month = nil)
-      populate_statistical_data if @median_flow.nil? or @median_flow.empty?
-
-      #todo: handle a specific day and month
-      @median_flow
-    end
-
-    
-    # Obtain the 80th percentile flow for this guage on a particular day and month. If 
-    # the parameter is nil, return a 2-dimensional array of the 80th percentile flows
-    # on days for which data exists.  The array is sorted by date.
-    def get_percentile80_flow(day_and_month = nil)
-      populate_statistical_data if @percentile80_flow.nil? or @percentile80_flow.empty?
-
-      #todo: handle a specific day and month
-      @percentile80_flow
-    end
-
-    
-    # Obtain the 80th percentile flow for this guage on a particular day and month. If 
-    # the parameter is nil, return a 2-dimensional array of the 80th percentile flows
-    # on days for which data exists.  The array is sorted by date.
-    def get_percentile20_flow(day_and_month = nil)
-      populate_statistical_data if @percentile20_flow.nil? or @percentile20_flow.empty?
-
-      #todo: handle a specific day and month
-      @percentile20_flow
-    end
-
   end
 end
 
