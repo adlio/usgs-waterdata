@@ -23,6 +23,5 @@ Gem::Specification.new do |s|
                   "spec/waterdata_spec.rb"]
   s.rdoc_options = ["--main", "README.txt"]
   s.extra_rdoc_files = ["History.txt", "Manifest.txt", "README.txt"]
-  s.add_dependency("open-uri", ["> 0.0.0"])
 end
 
