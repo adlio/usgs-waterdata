@@ -1,5 +1,12 @@
 History.txt
+init.rb
 Manifest.txt
+License.txt
 README.txt
 Rakefile
-lib/usgs-waterdata.rb
+lib/usgs.rb
+lib/usgs/gauge.rb
+lib/usgs/water_data.rb
+spec/gauge_spec.rb
+spec/spec_helper.rb
+spec/waterdata_spec.rb
