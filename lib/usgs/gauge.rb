@@ -2,6 +2,7 @@ module USGS
 
   require 'open-uri'
   require 'date'
+  require 'rexml/document'
 
   class Gauge
 
@@ -69,6 +70,18 @@ module USGS
       @daily_mean_flows
     end
 
+    # Return the latitude and longitude for this gauge
+    def get_lat_lon
+      populate_site_data if @lat_lon.nil? or @lat_lon.empty?
+      @lat_lon
+    end
+
+    # Return the site name for this gauge
+    def get_site_name
+      populate_site_data if @site_name.nil? or @site_name.empty?
+      @site_name
+    end
+
     private
 
     # Populate daily data for a gauge from the USGS site
@@ -89,7 +102,6 @@ module USGS
       begin_dt, end_dt = end_dt, begin_dt if end_dt < begin_dt
 
       url = "http://waterdata.usgs.gov/nwis/dv?site_no=#{@site_number}&cb_00060=on&begin_date=#{begin_dt.strftime("%Y-%m-%d")}&end_date=#{end_dt.strftime("%Y-%m-%d")}&format=rdb"
-      puts url
       mean_flows_hash = {}  
       open(url).each do |line|
         next if line =~ /^#/
@@ -164,6 +176,19 @@ module USGS
       @statistical_median_flows = median_flows_hash.sort
       @statistical_percentile20_flows = percentile20_flows_hash.sort
       @statistical_percentile80_flows = percentile80_flows_hash.sort
+    end
+
+    def populate_site_data
+      
+      url = "http://waterservices.usgs.gov/NWISQuery/GetDV1?SiteNum=#{@site_number}&ParameterCode=00060&StatisticCode=00003&StartDate=2000-11-16&EndDate=2000-11-17&action=Submit"
+      doc = REXML::Document.new(open(url))
+
+      @lat_lon = [0.00, 0.00]
+      REXML::XPath.each(doc, "//latitude") {|el| @lat_lon[0] = el.text.to_f}
+      REXML::XPath.each(doc, "//longitude") {|el| @lat_lon[1] = el.text.to_f}
+
+      @site_name = ""
+      REXML::XPath.each(doc, "//siteName") {|el| @site_name = el.text}
     end
   end
 end

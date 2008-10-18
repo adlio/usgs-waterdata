@@ -42,7 +42,7 @@ describe USGS::Gauge do
     gauge = USGS::Gauge.new(13336500)
     puts "Latest flow for the Selway River is #{gauge.latest_flow} CFS"
   end
-  
+
   it 'should get daily mean flows for a river' do
     gauge = USGS::Gauge.new(13336500)
     daily_mean_flows = gauge.get_daily_mean_flows
@@ -106,7 +106,7 @@ describe USGS::Gauge do
     end
   end
 
-   it 'should handle a date that has not yet occured' do
+  it 'should handle a date that has not yet occured' do
     gauge = USGS::Gauge.new(13336500)
     gauge.should_not be_nil
     begin_dt = Date.new(Date.today.year, Date.today.month + 1, Date.today.day)
@@ -119,7 +119,7 @@ describe USGS::Gauge do
     end
   end
 
-     it 'should handle a out-of-range, switched data ' do
+  it 'should handle out-of-range, switched data ' do
     gauge = USGS::Gauge.new(13336500)
     gauge.should_not be_nil
     begin_dt = Date.new(Date.today.year, Date.today.month + 1, Date.today.day)
@@ -131,6 +131,13 @@ describe USGS::Gauge do
     daily_mean_flows.each do |record|
       puts "\t #{record[0].strftime("%d %b %Y")} = #{record[1]} CFS"
     end
+  end
+
+  it 'should obtain site information' do
+    gauge = USGS::Gauge.new(13336500)
+    latlon = gauge.get_lat_lon
+    site_name = gauge.get_site_name
+    puts "The latitude and longitude for the gauge at #{site_name} is #{latlon[0]}, #{latlon[1]}"
   end
 
 end

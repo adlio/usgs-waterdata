@@ -1,7 +1,7 @@
 
 Gem::Specification.new do |s|
   s.name     = "usgs-waterdata"
-  s.version  = "0.1.0"
+  s.version  = "0.2.0"
   s.date     = "2008-10-16"
   s.summary  = "Library for obtaining river flow data."
   s.email    = "ctenbrink@gmail.com"
