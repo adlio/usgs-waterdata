@@ -58,22 +58,44 @@ module USGS
 
     # Returns a 2-dimensional array of the daily mean flows for this
     # gauge on days for which data exists, sorted by date.
-    def get_daily_mean_flows
-      populate_daily_data if @daily_mean_flows.nil? or @daily_mean_flows.empty?
+    def get_daily_mean_flows(begin_dt = Date.new(1880, 1, 1), end_dt=nil)
+
+      end_dt = begin_dt if end_dt.nil?
+      begin_dt, end_dt = end_dt, begin_dt if end_dt < begin_dt
+
+      populate_daily_data(begin_dt, end_dt) if @daily_mean_flows.nil? or @daily_mean_flows.empty?
+      populate_daily_data(begin_dt, end_dt) if (begin_dt < @daily_mean_flows.first[0] or end_dt > @daily_mean_flows.last[0])
+
       @daily_mean_flows
     end
 
     private
 
     # Populate daily data for a gauge from the USGS site
-    def populate_daily_data
-      url = "http://waterdata.usgs.gov/nwis/dv?site_no=#{@site_number}&cb_00060=on&begin_date=1880-01-01&format=rdb"
+    def populate_daily_data(begin_dt = Date.new(1880, 1, 1), end_dt=nil)
+
+      oldest_dt = Date.new(1880, 1, 1)
+      newest_dt = Date.today
+
+      begin_dt = oldest_dt if begin_dt < oldest_dt
+      begin_dt = newest_dt if begin_dt > newest_dt
+
+      end_dt = begin_dt if end_dt.nil?
+      end_dt = oldest_dt if end_dt < oldest_dt
+
+      end_dt = oldest_dt if end_dt < oldest_dt
+      end_dt = newest_dt if end_dt > newest_dt
+
+      begin_dt, end_dt = end_dt, begin_dt if end_dt < begin_dt
+
+      url = "http://waterdata.usgs.gov/nwis/dv?site_no=#{@site_number}&cb_00060=on&begin_date=#{begin_dt.strftime("%Y-%m-%d")}&end_date=#{end_dt.strftime("%Y-%m-%d")}&format=rdb"
+      puts url
       mean_flows_hash = {}  
       open(url).each do |line|
         next if line =~ /^#/
         next if line =~ /^5/
         next if line =~ /^agency/
-         
+
         field_array = line.split(/\t/)
         date_array = field_array[2].split('-')
         date = Date.new(date_array[0].to_i, date_array[1].to_i, date_array[2].to_i)
