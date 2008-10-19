@@ -156,6 +156,7 @@ module USGS
         next if line =~ /^5/
         next if line =~ /^agency/
         next if line =~ /^\s/
+        next if line =~ /^No sites/
 
         field_array = line.split(/\t/)
         month = field_array[field_map['month_nu']]
